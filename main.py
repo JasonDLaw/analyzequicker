@@ -6,7 +6,6 @@ from google.oauth2 import service_account
 import config
 import requests
 import csv
-
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
@@ -44,18 +43,18 @@ base_url = 'https://www.alphavantage.co/query?apikey={apikey}'.format(apikey=api
 #     my_list = list(cr)
 #     df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
 #     df.to_csv('data/tickers.csv'.format(function=function),index=False)
-# %%
-tickers = pd.read_csv('data/tickers.csv')
-tickers.head()
-# %%
-# TIME_SERIES_DAILY_ADJUSTED import
-from test_data import TIME_SERIES_DAILY_ADJUSTED
-import pandas as pd
+# tickers = pd.read_csv('data/tickers.csv')
 
-json = TIME_SERIES_DAILY_ADJUSTED
+#%%
+ticker = 'IBM'
+#%%
+function = 'TIME_SERIES_MONTHLY_ADJUSTED'
+url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+r = requests.get(url)
+data = r.json()
 
-time_series_data = json['Time Series (Daily)']
-symbol = json['Meta Data']['2. Symbol']
+time_series_data = data['Monthly Adjusted Time Series']
+symbol = data['Meta Data']['2. Symbol']
 
 df = pd.DataFrame.from_dict(time_series_data, orient='index')
 df['symbol'] = symbol
@@ -67,7 +66,9 @@ df.columns = df.columns.str.strip()  # Remove leading/trailing whitespace
 df.columns = df.columns.str.replace(' ', '_')  # Replace spaces with underscores
 df.columns = df.columns.str.lower()  # Convert to lowercase for consistency
 
-# %%
+df.to_csv('data/TIME_SERIES_MONTHLY_ADJUSTED/{ticker}_TIME_SERIES_MONTHLY_ADJUSTED.csv'.format(ticker=ticker),index=False)
+
+#%%
 
 
 
