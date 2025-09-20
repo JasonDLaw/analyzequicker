@@ -6,6 +6,7 @@ from google.oauth2 import service_account
 import config
 import requests
 import csv
+import io
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
@@ -25,50 +26,76 @@ class RateLimiter:
             time.sleep(sleep_time)
         
         self.last_call_time = time.time()
-
+#%%
 rate_limiter = RateLimiter(calls_per_second=1)
 
 #%% set base url for alpha vantage
 apikey = config.alpha_vantage_api_key
 base_url = 'https://www.alphavantage.co/query?apikey={apikey}'.format(apikey=apikey)
 #%%
-# import tickers from alpha vantage
+# LISTING_STATUS
 # function = 'LISTING_STATUS'
 # url = base_url + '&function={function}'.format(function=function)
-
-# with requests.Session() as s:
-#     download = s.get(url)
-#     decoded_content = download.content.decode('utf-8')
-#     cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-#     my_list = list(cr)
-#     df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
-#     df.to_csv('data/tickers.csv'.format(function=function),index=False)
-# tickers = pd.read_csv('data/tickers.csv')
-
+# r = requests.get(url)
+# decoded_content = r.content.decode('utf-8')
+# cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+# my_list = list(cr)
+# df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
+# df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+# df.to_csv('data/{function}.csv'.format(function=function),index=False)
+tickers = pd.read_csv(f'data/{function}.csv'.format(function=function))
 #%%
 ticker = 'IBM'
 #%%
+#%% TIME_SERIES_MONTHLY_ADJUSTED
 function = 'TIME_SERIES_MONTHLY_ADJUSTED'
+url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+r = requests.get(url)
+df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+df['ticker'] = ticker
+df.columns = df.columns.str.replace(' ', '_')
+df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+#%%
+# INCOME_STATEMENT
+function = 'INCOME_STATEMENT'
+url = f'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+r = requests.get(url)
+data = r.json()
+df = pd.DataFrame(data['annualReports'])
+df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+df['ticker'] = ticker
+df.to_csv(f'data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+# %%
+# BALANCE_SHEET
+function = 'BALANCE_SHEET'
 url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
 r = requests.get(url)
 data = r.json()
+df = pd.DataFrame(data['annualReports'])
+df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+df['ticker'] = ticker
+df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+# %%
+# CASH_FLOW
+function = 'CASH_FLOW'
+url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+r = requests.get(url)
+data = r.json()
+df = pd.DataFrame(data['annualReports'])
+df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+df['ticker'] = ticker
+df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
-time_series_data = data['Monthly Adjusted Time Series']
-symbol = data['Meta Data']['2. Symbol']
-
-df = pd.DataFrame.from_dict(time_series_data, orient='index')
-df['symbol'] = symbol
-df['date'] = df.index
-df = df.reset_index(drop=True)
-
-df.columns = df.columns.str.replace(r'[0-9.]+\s*', '', regex=True)  # Remove numbers and periods
-df.columns = df.columns.str.strip()  # Remove leading/trailing whitespace
-df.columns = df.columns.str.replace(' ', '_')  # Replace spaces with underscores
-df.columns = df.columns.str.lower()  # Convert to lowercase for consistency
-
-df.to_csv('data/TIME_SERIES_MONTHLY_ADJUSTED/{ticker}_TIME_SERIES_MONTHLY_ADJUSTED.csv'.format(ticker=ticker),index=False)
-
-#%%
-
-
+# %%
+# EARNINGS
+function = 'EARNINGS'
+url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+r = requests.get(url)
+data = r.json()
+df = pd.DataFrame(data['quarterlyEarnings'])
+df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+df['ticker'] = ticker
+df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+# %%
 
