@@ -3,12 +3,11 @@ import pandas as pd
 import time
 from google.cloud import bigquery
 from google.oauth2 import service_account
-from dotenv import load_dotenv
-import os
+import config
+import requests
+import csv
 
-load_dotenv()
-service_account_path = os.getenv('service_account_path')
-credentials = service_account.Credentials.from_service_account_file(service_account_path)
+credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
 class RateLimiter:
@@ -30,10 +29,45 @@ class RateLimiter:
 
 rate_limiter = RateLimiter(calls_per_second=1)
 
+#%% set base url for alpha vantage
+apikey = config.alpha_vantage_api_key
+base_url = 'https://www.alphavantage.co/query?apikey={apikey}'.format(apikey=apikey)
 #%%
-# read in tickers
-# https://www.nasdaq.com/market-activity/stocks/screener
-tickers = pd.read_csv('data/nasdaq_nyse_amex.csv')
-tickers['Symbol'] = tickers['Symbol'].str.replace('/', '-')
+# import tickers from alpha vantage
+# function = 'LISTING_STATUS'
+# url = base_url + '&function={function}'.format(function=function)
+
+# with requests.Session() as s:
+#     download = s.get(url)
+#     decoded_content = download.content.decode('utf-8')
+#     cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+#     my_list = list(cr)
+#     df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
+#     df.to_csv('data/tickers.csv'.format(function=function),index=False)
+# %%
+tickers = pd.read_csv('data/tickers.csv')
+tickers.head()
+# %%
+# TIME_SERIES_DAILY_ADJUSTED import
+from test_data import TIME_SERIES_DAILY_ADJUSTED
+import pandas as pd
+
+json = TIME_SERIES_DAILY_ADJUSTED
+
+time_series_data = json['Time Series (Daily)']
+symbol = json['Meta Data']['2. Symbol']
+
+df = pd.DataFrame.from_dict(time_series_data, orient='index')
+df['symbol'] = symbol
+df['date'] = df.index
+df = df.reset_index(drop=True)
+
+df.columns = df.columns.str.replace(r'[0-9.]+\s*', '', regex=True)  # Remove numbers and periods
+df.columns = df.columns.str.strip()  # Remove leading/trailing whitespace
+df.columns = df.columns.str.replace(' ', '_')  # Replace spaces with underscores
+df.columns = df.columns.str.lower()  # Convert to lowercase for consistency
 
 # %%
+
+
+
