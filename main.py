@@ -33,69 +33,150 @@ rate_limiter = RateLimiter(calls_per_second=1)
 apikey = config.alpha_vantage_api_key
 base_url = 'https://www.alphavantage.co/query?apikey={apikey}'.format(apikey=apikey)
 #%%
-# LISTING_STATUS
-# function = 'LISTING_STATUS'
-# url = base_url + '&function={function}'.format(function=function)
-# r = requests.get(url)
-# decoded_content = r.content.decode('utf-8')
-# cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-# my_list = list(cr)
-# df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
-# df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-# df.to_csv('data/{function}.csv'.format(function=function),index=False)
-tickers = pd.read_csv(f'data/{function}.csv'.format(function=function))
-#%%
-ticker = 'IBM'
-#%%
-#%% TIME_SERIES_MONTHLY_ADJUSTED
-function = 'TIME_SERIES_MONTHLY_ADJUSTED'
-url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-r = requests.get(url)
-df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-df['ticker'] = ticker
-df.columns = df.columns.str.replace(' ', '_')
-df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+def get_listing_status():
+    rate_limiter.wait()
+    function = 'LISTING_STATUS'
+    url = base_url + '&function={function}'.format(function=function)
+    r = requests.get(url)
+    decoded_content = r.content.decode('utf-8')
+    cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+    my_list = list(cr)
+    df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df.to_csv('data/{function}.csv'.format(function=function),index=False)
+    tickers = pd.read_csv(f'data/{function}.csv'.format(function=function))
+    return tickers
 
-#%%
-# INCOME_STATEMENT
-function = 'INCOME_STATEMENT'
-url = f'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-r = requests.get(url)
-data = r.json()
-df = pd.DataFrame(data['annualReports'])
-df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-df['ticker'] = ticker
-df.to_csv(f'data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
-# %%
-# BALANCE_SHEET
-function = 'BALANCE_SHEET'
-url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-r = requests.get(url)
-data = r.json()
-df = pd.DataFrame(data['annualReports'])
-df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-df['ticker'] = ticker
-df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
-# %%
-# CASH_FLOW
-function = 'CASH_FLOW'
-url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-r = requests.get(url)
-data = r.json()
-df = pd.DataFrame(data['annualReports'])
-df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-df['ticker'] = ticker
-df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+def get_overview(ticker):
+    rate_limiter.wait()
+    function = 'OVERVIEW'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    df = pd.DataFrame([data])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df.columns = df.columns.str.replace(r'^(\d)', r'_\1', regex=True)
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
-# %%
-# EARNINGS
-function = 'EARNINGS'
-url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-r = requests.get(url)
-data = r.json()
-df = pd.DataFrame(data['quarterlyEarnings'])
-df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-df['ticker'] = ticker
-df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
-# %%
+def get_time_series_monthly_adjusted(ticker):
+    rate_limiter.wait()
+    function = 'TIME_SERIES_MONTHLY_ADJUSTED'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['ticker'] = ticker
+    df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_income_statement(ticker):
+    rate_limiter.wait()
+    function = 'INCOME_STATEMENT'
+    url = f'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    df = pd.DataFrame(data['annualReports'])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df['ticker'] = ticker
+    df.to_csv(f'data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_balance_sheet(ticker):
+    rate_limiter.wait()
+    function = 'BALANCE_SHEET'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    df = pd.DataFrame(data['annualReports'])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_cash_flow(ticker):
+    rate_limiter.wait()
+    function = 'CASH_FLOW'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    df = pd.DataFrame(data['annualReports'])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_earnings(ticker):
+    rate_limiter.wait()
+    function = 'EARNINGS'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    df = pd.DataFrame(data['quarterlyEarnings'])
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_earnings_estimates(ticker):
+    rate_limiter.wait()
+    function = 'EARNINGS_ESTIMATES'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+    estimates_data = data.get('estimates', [])
+    df = pd.DataFrame(estimates_data)# Clean column names (convert camelCase to snake_case)
+    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+    df['ticker'] = ticker
+    df.to_csv(f'data/{function}/{ticker}_{function}.csv', index=False)
+
+def get_dividends(ticker):
+    rate_limiter.wait()
+    function = 'DIVIDENDS'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['ticker'] = ticker
+    df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_splits(ticker):
+    rate_limiter.wait()
+    function = 'SPLITS'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['ticker'] = ticker
+    df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_shares_outstanding(ticker):
+    rate_limiter.wait()
+    function = 'SHARES_OUTSTANDING'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['ticker'] = ticker
+    df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+#%%
+tickers = get_listing_status()
+# for testing
+# tickers = pd.read_json('{"symbol":{"0":"A"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Stock"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
+#%%
+stocks = tickers[tickers['type'] == 'Stock']
+for ticker in stocks.symbol.unique():
+    get_overview(ticker)
+    get_time_series_monthly_adjusted(ticker)
+    get_income_statement(ticker)
+    get_balance_sheet(ticker)
+    get_cash_flow(ticker)
+    get_earnings(ticker)
+    get_earnings_estimates(ticker)
+    get_dividends(ticker)
+    get_splits(ticker)
+    get_shares_outstanding(ticker)
+#%%
+etfs = tickers[tickers['type'] == 'ETF']
+for ticker in etfs.symbol.unique():
+    get_time_series_monthly_adjusted(ticker)
+    
+#%%
+# ETF_PROFILE
+# EARNINGS_CALENDAR 
+# IPO_CALENDAR 
 
