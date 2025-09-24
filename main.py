@@ -153,10 +153,39 @@ def get_shares_outstanding(ticker):
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_etf_profile(ticker):
+    rate_limiter.wait()
+    function = 'ETF_PROFILE'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    data = r.json()
+
+    info = {
+        'net_assets': [data['net_assets']],
+        'net_expense_ratio': [data['net_expense_ratio']],
+        'portfolio_turnover': [data['portfolio_turnover']],
+        'dividend_yield': [data['dividend_yield']],
+        'inception_date': [data['inception_date']],
+        'leveraged': [data['leveraged']]
+    }
+
+    df = pd.DataFrame(info)
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=ticker,function=function),index=False)
+
+    df = pd.DataFrame(data['sectors'])
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=ticker,function=function),index=False)
+
+    df = pd.DataFrame(data['holdings'])
+    df['ticker'] = ticker
+    df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
+
 #%%
-tickers = get_listing_status()
+# tickers = get_listing_status()
 # for testing
-# tickers = pd.read_json('{"symbol":{"0":"A"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Stock"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
+tickers = pd.read_json('{"symbol":{"0":"IVV"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"ETF"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
 #%%
 stocks = tickers[tickers['type'] == 'Stock']
 for ticker in stocks.symbol.unique():
@@ -171,12 +200,12 @@ for ticker in stocks.symbol.unique():
     get_splits(ticker)
     get_shares_outstanding(ticker)
 #%%
-etfs = tickers[tickers['type'] == 'ETF']
+etfs = tickers[tickers['asset_type'] == 'ETF']
 for ticker in etfs.symbol.unique():
     get_time_series_monthly_adjusted(ticker)
-    
+    get_dividends(ticker)
+    get_etf_profile(ticker)
+
 #%%
-# ETF_PROFILE
-# EARNINGS_CALENDAR 
-# IPO_CALENDAR 
+
 
