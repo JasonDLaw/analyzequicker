@@ -7,6 +7,7 @@ import config
 import requests
 import csv
 import io
+import tqdm
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
@@ -56,6 +57,7 @@ def get_overview(ticker):
     df = pd.DataFrame([data])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df.columns = df.columns.str.replace(r'^(\d)', r'_\1', regex=True)
+    df = df.rename(columns={'symbol': 'ticker'})
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_time_series_monthly_adjusted(ticker):
@@ -183,12 +185,12 @@ def get_etf_profile(ticker):
     df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
 
 #%%
-# tickers = get_listing_status()
+tickers = get_listing_status()
 # for testing
-tickers = pd.read_json('{"symbol":{"0":"IVV"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"ETF"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
+# tickers = pd.read_json('{"symbol":{"0":"IBM"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Equity"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
 #%%
-stocks = tickers[tickers['type'] == 'Stock']
-for ticker in stocks.symbol.unique():
+stocks = tickers[tickers['asset_type'] == 'Equity']
+for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_overview(ticker)
     get_time_series_monthly_adjusted(ticker)
     get_income_statement(ticker)
@@ -199,13 +201,21 @@ for ticker in stocks.symbol.unique():
     get_dividends(ticker)
     get_splits(ticker)
     get_shares_outstanding(ticker)
+    
 #%%
-etfs = tickers[tickers['asset_type'] == 'ETF']
+etfs = tqdm.tqdm(tickers[tickers['asset_type'] == 'ETF'])
 for ticker in etfs.symbol.unique():
     get_time_series_monthly_adjusted(ticker)
     get_dividends(ticker)
     get_etf_profile(ticker)
 
 #%%
-
+# add insider transactions
+# add forex rates
+# add commodity prices
+# add economic indicators
+# add daily time series data
+# add technical indicators
+# add earnings call transcripts
+# add news & sentiment
 
