@@ -60,6 +60,16 @@ def get_overview(ticker):
     df = df.rename(columns={'symbol': 'ticker'})
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
+def get_time_series_daily_adjusted(ticker):
+    rate_limiter.wait()
+    function = 'TIME_SERIES_DAILY_ADJUSTED'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['ticker'] = ticker
+    df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
 def get_time_series_monthly_adjusted(ticker):
     rate_limiter.wait()
     function = 'TIME_SERIES_MONTHLY_ADJUSTED'
@@ -68,6 +78,14 @@ def get_time_series_monthly_adjusted(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+
+def get_insider_transactions(ticker):
+    rate_limiter.wait()
+    function = 'INSIDER_TRANSACTIONS'
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    r = requests.get(url)
+    df = pd.DataFrame(r.json()['data'])
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_income_statement(ticker):
@@ -185,14 +203,16 @@ def get_etf_profile(ticker):
     df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
 
 #%%
-tickers = get_listing_status()
+# tickers = get_listing_status()
 # for testing
-# tickers = pd.read_json('{"symbol":{"0":"IBM"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Equity"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
+tickers = pd.read_json('{"symbol":{"0":"IBM"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Equity"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
 #%%
 stocks = tickers[tickers['asset_type'] == 'Equity']
 for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_overview(ticker)
+    get_time_series_daily_adjusted(ticker)
     get_time_series_monthly_adjusted(ticker)
+    get_insider_transactions(ticker)
     get_income_statement(ticker)
     get_balance_sheet(ticker)
     get_cash_flow(ticker)
@@ -202,6 +222,7 @@ for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_splits(ticker)
     get_shares_outstanding(ticker)
     
+    
 #%%
 etfs = tqdm.tqdm(tickers[tickers['asset_type'] == 'ETF'])
 for ticker in etfs.symbol.unique():
@@ -210,11 +231,31 @@ for ticker in etfs.symbol.unique():
     get_etf_profile(ticker)
 
 #%%
-# add insider transactions
+commodities = ['WTI','BRENT','NATURAL_GAS','COPPER','ALUMINUM','WHEAT','CORN','COTTON','SUGAR','COFFEE','ALL_COMMODITIES']
+for commodity in commodities:
+    rate_limiter.wait()
+    function = commodity
+    url = 'https://www.alphavantage.co/query?function={function}&apikey={apikey}&datatype=csv'.format(function=function,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['commodity'] = commodity
+    df.to_csv('data/COMMODITIES/{function}.csv'.format(function=function),index=False)
+    
+#%%
+economic_indicators = ['REAL_GDP','REAL_GDP_PER_CAPITA','TREASURY_YIELD','FEDERAL_FUNDS_RATE','CPI','INFLATION','RETAIL_SALES','DURABLES','UNEMPLOYMENT','NONFARM_PAYROLL']
+for economic_indicator in economic_indicators:
+    rate_limiter.wait()
+    function = economic_indicator
+    url = 'https://www.alphavantage.co/query?function={function}&apikey={apikey}&datatype=csv'.format(function=function,apikey=apikey)
+    r = requests.get(url)
+    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+    df['economic_indicator'] = economic_indicator
+    df.to_csv('data/ECONOMIC_INDICATORS/{function}.csv'.format(function=function),index=False)
+
+#%%
 # add forex rates
 # add commodity prices
 # add economic indicators
-# add daily time series data
 # add technical indicators
 # add earnings call transcripts
 # add news & sentiment
