@@ -7,6 +7,7 @@ import config
 import requests
 import csv
 import io
+import os
 import tqdm
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
@@ -45,7 +46,7 @@ def get_listing_status():
     df = pd.DataFrame(my_list[1:],columns=my_list[0:1][0])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df.to_csv('data/{function}.csv'.format(function=function),index=False)
-    tickers = pd.read_csv(f'data/{function}.csv'.format(function=function))
+    tickers = pd.read_csv('data/{function}.csv'.format(function=function))
     return tickers
 
 def get_overview(ticker):
@@ -58,6 +59,7 @@ def get_overview(ticker):
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df.columns = df.columns.str.replace(r'^(\d)', r'_\1', regex=True)
     df = df.rename(columns={'symbol': 'ticker'})
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_time_series_daily_adjusted(ticker):
@@ -68,6 +70,7 @@ def get_time_series_daily_adjusted(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_time_series_monthly_adjusted(ticker):
@@ -78,6 +81,7 @@ def get_time_series_monthly_adjusted(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_insider_transactions(ticker):
@@ -86,18 +90,20 @@ def get_insider_transactions(ticker):
     url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
     r = requests.get(url)
     df = pd.DataFrame(r.json()['data'])
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_income_statement(ticker):
     rate_limiter.wait()
     function = 'INCOME_STATEMENT'
-    url = f'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
     r = requests.get(url)
     data = r.json()
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
-    df.to_csv(f'data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_balance_sheet(ticker):
     rate_limiter.wait()
@@ -108,6 +114,7 @@ def get_balance_sheet(ticker):
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_cash_flow(ticker):
@@ -119,6 +126,7 @@ def get_cash_flow(ticker):
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_earnings(ticker):
@@ -130,6 +138,7 @@ def get_earnings(ticker):
     df = pd.DataFrame(data['quarterlyEarnings'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_earnings_estimates(ticker):
@@ -142,7 +151,8 @@ def get_earnings_estimates(ticker):
     df = pd.DataFrame(estimates_data)# Clean column names (convert camelCase to snake_case)
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
-    df.to_csv(f'data/{function}/{ticker}_{function}.csv', index=False)
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+    df.to_csv('data/{function}/{ticker}_{function}.csv', index=False)
 
 def get_dividends(ticker):
     rate_limiter.wait()
@@ -152,6 +162,7 @@ def get_dividends(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_splits(ticker):
@@ -162,6 +173,7 @@ def get_splits(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_shares_outstanding(ticker):
@@ -172,6 +184,7 @@ def get_shares_outstanding(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
 def get_etf_profile(ticker):
@@ -180,6 +193,8 @@ def get_etf_profile(ticker):
     url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
     r = requests.get(url)
     data = r.json()
+
+    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
 
     info = {
         'net_assets': [data['net_assets']],
@@ -192,14 +207,17 @@ def get_etf_profile(ticker):
 
     df = pd.DataFrame(info)
     df['ticker'] = ticker
+    os.makedirs('data/{function}/ETF_INFO'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=ticker,function=function),index=False)
 
     df = pd.DataFrame(data['sectors'])
     df['ticker'] = ticker
+    os.makedirs('data/{function}/ETF_SECTORS'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=ticker,function=function),index=False)
 
     df = pd.DataFrame(data['holdings'])
     df['ticker'] = ticker
+    os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
 
 #%%
@@ -239,6 +257,7 @@ for commodity in commodities:
     r = requests.get(url)
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['commodity'] = commodity
+    os.makedirs('data/COMMODITIES'.format(function=function), exist_ok=True)
     df.to_csv('data/COMMODITIES/{function}.csv'.format(function=function),index=False)
     
 #%%
@@ -250,13 +269,13 @@ for economic_indicator in economic_indicators:
     r = requests.get(url)
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['economic_indicator'] = economic_indicator
+    os.makedirs('data/ECONOMIC_INDICATORS'.format(function=function), exist_ok=True)
     df.to_csv('data/ECONOMIC_INDICATORS/{function}.csv'.format(function=function),index=False)
 
 #%%
-# add forex rates
-# add commodity prices
-# add economic indicators
-# add technical indicators
-# add earnings call transcripts
-# add news & sentiment
-
+# additional api calls to add
+    # add forex rates
+    # add technical indicators
+    # add earnings call transcripts
+    # add news & sentiment
+# how to restart where it left off or had an error
