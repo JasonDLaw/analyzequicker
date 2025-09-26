@@ -9,6 +9,8 @@ import csv
 import io
 import os
 import tqdm
+
+
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
@@ -69,17 +71,7 @@ def get_time_series_daily_adjusted(ticker):
     r = requests.get(url)
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
-    df.columns = df.columns.str.replace(' ', '_')
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
-
-def get_time_series_monthly_adjusted(ticker):
-    rate_limiter.wait()
-    function = 'TIME_SERIES_MONTHLY_ADJUSTED'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-    df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     df.columns = df.columns.str.replace(' ', '_')
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
@@ -90,6 +82,7 @@ def get_insider_transactions(ticker):
     url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
     r = requests.get(url)
     df = pd.DataFrame(r.json()['data'])
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -102,6 +95,7 @@ def get_income_statement(ticker):
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -114,6 +108,7 @@ def get_balance_sheet(ticker):
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -126,6 +121,7 @@ def get_cash_flow(ticker):
     df = pd.DataFrame(data['annualReports'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -138,6 +134,7 @@ def get_earnings(ticker):
     df = pd.DataFrame(data['quarterlyEarnings'])
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -151,8 +148,9 @@ def get_earnings_estimates(ticker):
     df = pd.DataFrame(estimates_data)# Clean column names (convert camelCase to snake_case)
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv', index=False)
+    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function), index=False)
 
 def get_dividends(ticker):
     rate_limiter.wait()
@@ -162,6 +160,7 @@ def get_dividends(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -173,6 +172,7 @@ def get_splits(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -184,6 +184,7 @@ def get_shares_outstanding(ticker):
     df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
     df['ticker'] = ticker
     df.columns = df.columns.str.replace(' ', '_')
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
 
@@ -194,6 +195,7 @@ def get_etf_profile(ticker):
     r = requests.get(url)
     data = r.json()
 
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
 
     info = {
@@ -222,14 +224,18 @@ def get_etf_profile(ticker):
 
 #%%
 # tickers = get_listing_status()
+# stocks = tickers[tickers['asset_type'] == 'Stock']
+# etfs = tickers[tickers['asset_type'] == 'ETF']
+
 # for testing
-tickers = pd.read_json('{"symbol":{"0":"IBM"},"name":{"0":"Agilent Technologies Inc"},"exchange":{"0":"NYSE"},"asset_type":{"0":"Equity"},"ipo_date":{"0":"1999-11-18"},"delisting_date":{"0":null},"status":{"0":"Active"}}')
+tickers  = pd.read_csv('data/LISTING_STATUS.csv')
+stocks = tickers[tickers['asset_type'] == 'Stock'][0:1]
+etfs = tickers[tickers['asset_type'] == 'ETF'][0:1]
 #%%
-stocks = tickers[tickers['asset_type'] == 'Equity']
+
 for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_overview(ticker)
     get_time_series_daily_adjusted(ticker)
-    get_time_series_monthly_adjusted(ticker)
     get_insider_transactions(ticker)
     get_income_statement(ticker)
     get_balance_sheet(ticker)
@@ -240,11 +246,9 @@ for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_splits(ticker)
     get_shares_outstanding(ticker)
     
-    
 #%%
-etfs = tqdm.tqdm(tickers[tickers['asset_type'] == 'ETF'])
-for ticker in etfs.symbol.unique():
-    get_time_series_monthly_adjusted(ticker)
+for ticker in tqdm.tqdm(etfs.symbol.unique()):
+    get_time_series_daily_adjusted(ticker)
     get_dividends(ticker)
     get_etf_profile(ticker)
 
@@ -273,9 +277,22 @@ for economic_indicator in economic_indicators:
     df.to_csv('data/ECONOMIC_INDICATORS/{function}.csv'.format(function=function),index=False)
 
 #%%
+# import stat
+# for root, dirs, files in os.walk("data"):
+#     for file in files:
+#         file_path = os.path.join(root, file)
+#         try:
+#             os.chmod(file_path, stat.S_IWRITE)
+#             os.remove(file_path)
+#             print(f"Deleted: {file}")
+#         except Exception as e:
+#             print(f"Could not delete {file}: {e}")
+
+#%%
 # additional api calls to add
     # add forex rates
     # add technical indicators
     # add earnings call transcripts
     # add news & sentiment
 # how to restart where it left off or had an error
+
