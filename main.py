@@ -195,7 +195,6 @@ def get_etf_profile(ticker):
     r = requests.get(url)
     data = r.json()
 
-    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}'.format(function=function), exist_ok=True)
 
     info = {
@@ -209,18 +208,23 @@ def get_etf_profile(ticker):
 
     df = pd.DataFrame(info)
     df['ticker'] = ticker
+    df.replace(to_replace='None', value=0, inplace=True)
     os.makedirs('data/{function}/ETF_INFO'.format(function=function), exist_ok=True)
     df.to_csv('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=ticker,function=function),index=False)
 
-    df = pd.DataFrame(data['sectors'])
-    df['ticker'] = ticker
-    os.makedirs('data/{function}/ETF_SECTORS'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=ticker,function=function),index=False)
+    if data.get('sectors'):
+        df = pd.DataFrame(data['sectors'])
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        os.makedirs('data/{function}/ETF_SECTORS'.format(function=function), exist_ok=True)
+        df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=ticker,function=function),index=False)
 
-    df = pd.DataFrame(data['holdings'])
-    df['ticker'] = ticker
-    os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
+    if data.get('holdings'):
+        df = pd.DataFrame(data['holdings'])
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
+        df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
 
 #%%
 # tickers = get_listing_status()
