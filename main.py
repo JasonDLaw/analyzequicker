@@ -15,9 +15,9 @@ credentials = service_account.Credentials.from_service_account_file(config.servi
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
 class RateLimiter:
-    def __init__(self, calls_per_second):
-        self.calls_per_second = calls_per_second
-        self.min_interval = 1.0 / calls_per_second
+    def __init__(self, calls_per_minute):
+        self.calls_per_minute = calls_per_minute
+        self.min_interval = 60.0 / calls_per_minute
         self.last_call_time = 0.0
     
     def wait(self):
@@ -31,7 +31,7 @@ class RateLimiter:
         
         self.last_call_time = time.time()
 #%%
-rate_limiter = RateLimiter(calls_per_second=1)
+rate_limiter = RateLimiter(calls_per_minute=74)
 
 #%% set base url for alpha vantage
 apikey = config.alpha_vantage_api_key
@@ -300,3 +300,5 @@ for economic_indicator in economic_indicators:
     # add news & sentiment
 # how to restart where it left off or had an error
 
+get_overview('IVV')
+# %%
