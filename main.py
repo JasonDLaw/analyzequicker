@@ -293,6 +293,7 @@ for economic_indicator in economic_indicators:
 #             print(f"Could not delete {file}: {e}")
 
 #%%
+# load data to bigquery
 # additional api calls to add
     # add forex rates
     # add technical indicators
@@ -300,5 +301,703 @@ for economic_indicator in economic_indicators:
     # add news & sentiment
 # how to restart where it left off or had an error
 
-get_overview('IVV')
-# %%
+#%%
+listing_status_df = pd.read_csv('data/LISTING_STATUS.csv')
+listing_status_df['ipo_date'] = pd.to_datetime(listing_status_df['ipo_date'].replace('null', None), errors='coerce')
+listing_status_df['delisting_date'] = pd.to_datetime(listing_status_df['delisting_date'].replace('null', None), errors='coerce')
+
+schema = [
+    bigquery.SchemaField("symbol", "STRING"),
+    bigquery.SchemaField("name", "STRING"), 
+    bigquery.SchemaField("exchange", "STRING"),
+    bigquery.SchemaField("asset_type", "STRING"),
+    bigquery.SchemaField("ipo_date", "DATE"),
+    bigquery.SchemaField("delisting_date", "DATE"),
+    bigquery.SchemaField("status", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    listing_status_df,
+    "analyzequicker.analyzequicker.listing_status",
+    job_config=bigquery.LoadJobConfig(schema=schema,write_disposition="WRITE_TRUNCATE")
+)
+job.result()  # Wait for the job to complete
+
+#%%
+# Combine and load BALANCE_SHEET data to BigQuery
+import glob
+
+balance_sheet_files = glob.glob('data/BALANCE_SHEET/*_BALANCE_SHEET.csv')
+balance_sheet_dfs = []
+
+for file in balance_sheet_files:
+    df = pd.read_csv(file)
+    balance_sheet_dfs.append(df)
+
+balance_sheet_df = pd.concat(balance_sheet_dfs, ignore_index=True)
+
+# Convert date columns
+balance_sheet_df['fiscal_date_ending'] = pd.to_datetime(balance_sheet_df['fiscal_date_ending'], errors='coerce')
+
+# Convert numeric columns (all except ticker, reported_currency, and fiscal_date_ending)
+numeric_columns = balance_sheet_df.columns.difference(['fiscal_date_ending', 'reported_currency', 'ticker'])
+for col in numeric_columns:
+    balance_sheet_df[col] = pd.to_numeric(balance_sheet_df[col], errors='coerce')
+
+# Define BigQuery schema for balance sheet
+balance_sheet_schema = [
+    bigquery.SchemaField("fiscal_date_ending", "DATE"),
+    bigquery.SchemaField("reported_currency", "STRING"),
+    bigquery.SchemaField("total_assets", "FLOAT64"),
+    bigquery.SchemaField("total_current_assets", "FLOAT64"),
+    bigquery.SchemaField("cash_and_cash_equivalents_at_carrying_value", "FLOAT64"),
+    bigquery.SchemaField("cash_and_short_term_investments", "FLOAT64"),
+    bigquery.SchemaField("inventory", "FLOAT64"),
+    bigquery.SchemaField("current_net_receivables", "FLOAT64"),
+    bigquery.SchemaField("total_non_current_assets", "FLOAT64"),
+    bigquery.SchemaField("property_plant_equipment", "FLOAT64"),
+    bigquery.SchemaField("accumulated_depreciation_amortization_ppe", "FLOAT64"),
+    bigquery.SchemaField("intangible_assets", "FLOAT64"),
+    bigquery.SchemaField("intangible_assets_excluding_goodwill", "FLOAT64"),
+    bigquery.SchemaField("goodwill", "FLOAT64"),
+    bigquery.SchemaField("investments", "FLOAT64"),
+    bigquery.SchemaField("long_term_investments", "FLOAT64"),
+    bigquery.SchemaField("short_term_investments", "FLOAT64"),
+    bigquery.SchemaField("other_current_assets", "FLOAT64"),
+    bigquery.SchemaField("other_non_current_assets", "FLOAT64"),
+    bigquery.SchemaField("total_liabilities", "FLOAT64"),
+    bigquery.SchemaField("total_current_liabilities", "FLOAT64"),
+    bigquery.SchemaField("current_accounts_payable", "FLOAT64"),
+    bigquery.SchemaField("deferred_revenue", "FLOAT64"),
+    bigquery.SchemaField("current_debt", "FLOAT64"),
+    bigquery.SchemaField("short_term_debt", "FLOAT64"),
+    bigquery.SchemaField("total_non_current_liabilities", "FLOAT64"),
+    bigquery.SchemaField("capital_lease_obligations", "FLOAT64"),
+    bigquery.SchemaField("long_term_debt", "FLOAT64"),
+    bigquery.SchemaField("current_long_term_debt", "FLOAT64"),
+    bigquery.SchemaField("long_term_debt_noncurrent", "FLOAT64"),
+    bigquery.SchemaField("short_long_term_debt_total", "FLOAT64"),
+    bigquery.SchemaField("other_current_liabilities", "FLOAT64"),
+    bigquery.SchemaField("other_non_current_liabilities", "FLOAT64"),
+    bigquery.SchemaField("total_shareholder_equity", "FLOAT64"),
+    bigquery.SchemaField("treasury_stock", "FLOAT64"),
+    bigquery.SchemaField("retained_earnings", "FLOAT64"),
+    bigquery.SchemaField("common_stock", "FLOAT64"),
+    bigquery.SchemaField("common_stock_shares_outstanding", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    balance_sheet_df,
+    "analyzequicker.analyzequicker.balance_sheet",
+    job_config=bigquery.LoadJobConfig(schema=balance_sheet_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()  # Wait for the job to complete
+print(f"Loaded {len(balance_sheet_df)} rows to balance_sheet table")
+
+#%%
+# Combine and load CASH_FLOW data to BigQuery
+cash_flow_files = glob.glob('data/CASH_FLOW/*_CASH_FLOW.csv')
+cash_flow_dfs = []
+
+for file in cash_flow_files:
+    df = pd.read_csv(file)
+    cash_flow_dfs.append(df)
+
+cash_flow_df = pd.concat(cash_flow_dfs, ignore_index=True)
+
+# Convert date columns
+cash_flow_df['fiscal_date_ending'] = pd.to_datetime(cash_flow_df['fiscal_date_ending'], errors='coerce')
+
+# Convert numeric columns (all except ticker, reported_currency, and fiscal_date_ending)
+numeric_columns = cash_flow_df.columns.difference(['fiscal_date_ending', 'reported_currency', 'ticker'])
+for col in numeric_columns:
+    cash_flow_df[col] = pd.to_numeric(cash_flow_df[col], errors='coerce')
+
+# Define BigQuery schema for cash flow
+cash_flow_schema = [
+    bigquery.SchemaField("fiscal_date_ending", "DATE"),
+    bigquery.SchemaField("reported_currency", "STRING"),
+    bigquery.SchemaField("operating_cashflow", "FLOAT64"),
+    bigquery.SchemaField("payments_for_operating_activities", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_operating_activities", "FLOAT64"),
+    bigquery.SchemaField("change_in_operating_liabilities", "FLOAT64"),
+    bigquery.SchemaField("change_in_operating_assets", "FLOAT64"),
+    bigquery.SchemaField("depreciation_depletion_and_amortization", "FLOAT64"),
+    bigquery.SchemaField("capital_expenditures", "FLOAT64"),
+    bigquery.SchemaField("change_in_receivables", "FLOAT64"),
+    bigquery.SchemaField("change_in_inventory", "FLOAT64"),
+    bigquery.SchemaField("profit_loss", "FLOAT64"),
+    bigquery.SchemaField("cashflow_from_investment", "FLOAT64"),
+    bigquery.SchemaField("cashflow_from_financing", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_repayments_of_short_term_debt", "FLOAT64"),
+    bigquery.SchemaField("payments_for_repurchase_of_common_stock", "FLOAT64"),
+    bigquery.SchemaField("payments_for_repurchase_of_equity", "FLOAT64"),
+    bigquery.SchemaField("payments_for_repurchase_of_preferred_stock", "FLOAT64"),
+    bigquery.SchemaField("dividend_payout", "FLOAT64"),
+    bigquery.SchemaField("dividend_payout_common_stock", "FLOAT64"),
+    bigquery.SchemaField("dividend_payout_preferred_stock", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_issuance_of_common_stock", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_issuance_of_long_term_debt_and_capital_securities_net", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_issuance_of_preferred_stock", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_repurchase_of_equity", "FLOAT64"),
+    bigquery.SchemaField("proceeds_from_sale_of_treasury_stock", "FLOAT64"),
+    bigquery.SchemaField("change_in_cash_and_cash_equivalents", "FLOAT64"),
+    bigquery.SchemaField("change_in_exchange_rate", "FLOAT64"),
+    bigquery.SchemaField("net_income", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    cash_flow_df,
+    "analyzequicker.analyzequicker.cash_flow",
+    job_config=bigquery.LoadJobConfig(schema=cash_flow_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()  # Wait for the job to complete
+print(f"Loaded {len(cash_flow_df)} rows to cash_flow table")
+
+#%%
+# Combine and load INCOME_STATEMENT data to BigQuery
+income_statement_files = glob.glob('data/INCOME_STATEMENT/*_INCOME_STATEMENT.csv')
+income_statement_dfs = []
+
+for file in income_statement_files:
+    df = pd.read_csv(file)
+    income_statement_dfs.append(df)
+
+income_statement_df = pd.concat(income_statement_dfs, ignore_index=True)
+
+# Convert date columns
+income_statement_df['fiscal_date_ending'] = pd.to_datetime(income_statement_df['fiscal_date_ending'], errors='coerce')
+
+# Convert numeric columns
+numeric_columns = income_statement_df.columns.difference(['fiscal_date_ending', 'reported_currency', 'ticker'])
+for col in numeric_columns:
+    income_statement_df[col] = pd.to_numeric(income_statement_df[col], errors='coerce')
+
+# Define BigQuery schema for income statement
+income_statement_schema = [
+    bigquery.SchemaField("fiscal_date_ending", "DATE"),
+    bigquery.SchemaField("reported_currency", "STRING"),
+    bigquery.SchemaField("gross_profit", "FLOAT64"),
+    bigquery.SchemaField("total_revenue", "FLOAT64"),
+    bigquery.SchemaField("cost_of_revenue", "FLOAT64"),
+    bigquery.SchemaField("costof_goods_and_services_sold", "FLOAT64"),
+    bigquery.SchemaField("operating_income", "FLOAT64"),
+    bigquery.SchemaField("selling_general_and_administrative", "FLOAT64"),
+    bigquery.SchemaField("research_and_development", "FLOAT64"),
+    bigquery.SchemaField("operating_expenses", "FLOAT64"),
+    bigquery.SchemaField("investment_income_net", "FLOAT64"),
+    bigquery.SchemaField("net_interest_income", "FLOAT64"),
+    bigquery.SchemaField("interest_income", "FLOAT64"),
+    bigquery.SchemaField("interest_expense", "FLOAT64"),
+    bigquery.SchemaField("non_interest_income", "FLOAT64"),
+    bigquery.SchemaField("other_non_operating_income", "FLOAT64"),
+    bigquery.SchemaField("depreciation", "FLOAT64"),
+    bigquery.SchemaField("depreciation_and_amortization", "FLOAT64"),
+    bigquery.SchemaField("income_before_tax", "FLOAT64"),
+    bigquery.SchemaField("income_tax_expense", "FLOAT64"),
+    bigquery.SchemaField("interest_and_debt_expense", "FLOAT64"),
+    bigquery.SchemaField("net_income_from_continuing_operations", "FLOAT64"),
+    bigquery.SchemaField("comprehensive_income_net_of_tax", "FLOAT64"),
+    bigquery.SchemaField("ebit", "FLOAT64"),
+    bigquery.SchemaField("ebitda", "FLOAT64"),
+    bigquery.SchemaField("net_income", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    income_statement_df,
+    "analyzequicker.analyzequicker.income_statement",
+    job_config=bigquery.LoadJobConfig(schema=income_statement_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(income_statement_df)} rows to income_statement table")
+
+#%%
+# Combine and load EARNINGS data to BigQuery
+earnings_files = glob.glob('data/EARNINGS/*_EARNINGS.csv')
+earnings_dfs = []
+
+for file in earnings_files:
+    df = pd.read_csv(file)
+    earnings_dfs.append(df)
+
+earnings_df = pd.concat(earnings_dfs, ignore_index=True)
+
+# Convert date columns
+earnings_df['fiscal_date_ending'] = pd.to_datetime(earnings_df['fiscal_date_ending'], errors='coerce')
+earnings_df['reported_date'] = pd.to_datetime(earnings_df['reported_date'], errors='coerce')
+
+# Convert numeric columns
+numeric_columns = earnings_df.columns.difference(['fiscal_date_ending', 'reported_date', 'report_time', 'ticker'])
+for col in numeric_columns:
+    earnings_df[col] = pd.to_numeric(earnings_df[col], errors='coerce')
+
+# Define BigQuery schema for earnings
+earnings_schema = [
+    bigquery.SchemaField("fiscal_date_ending", "DATE"),
+    bigquery.SchemaField("reported_date", "DATE"),
+    bigquery.SchemaField("reported_eps", "FLOAT64"),
+    bigquery.SchemaField("estimated_eps", "FLOAT64"),
+    bigquery.SchemaField("surprise", "FLOAT64"),
+    bigquery.SchemaField("surprise_percentage", "FLOAT64"),
+    bigquery.SchemaField("report_time", "STRING"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    earnings_df,
+    "analyzequicker.analyzequicker.earnings",
+    job_config=bigquery.LoadJobConfig(schema=earnings_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(earnings_df)} rows to earnings table")
+
+#%%
+# Combine and load DIVIDENDS data to BigQuery
+dividends_files = glob.glob('data/DIVIDENDS/*_DIVIDENDS.csv')
+dividends_dfs = []
+
+for file in dividends_files:
+    df = pd.read_csv(file)
+    dividends_dfs.append(df)
+
+dividends_df = pd.concat(dividends_dfs, ignore_index=True)
+
+# Convert date columns
+dividends_df['ex_dividend_date'] = pd.to_datetime(dividends_df['ex_dividend_date'], errors='coerce')
+dividends_df['declaration_date'] = pd.to_datetime(dividends_df['declaration_date'], errors='coerce')
+dividends_df['record_date'] = pd.to_datetime(dividends_df['record_date'], errors='coerce')
+dividends_df['payment_date'] = pd.to_datetime(dividends_df['payment_date'], errors='coerce')
+
+# Convert numeric columns
+dividends_df['amount'] = pd.to_numeric(dividends_df['amount'], errors='coerce')
+
+# Define BigQuery schema for dividends
+dividends_schema = [
+    bigquery.SchemaField("ex_dividend_date", "DATE"),
+    bigquery.SchemaField("declaration_date", "DATE"),
+    bigquery.SchemaField("record_date", "DATE"),
+    bigquery.SchemaField("payment_date", "DATE"),
+    bigquery.SchemaField("amount", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    dividends_df,
+    "analyzequicker.analyzequicker.dividends",
+    job_config=bigquery.LoadJobConfig(schema=dividends_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(dividends_df)} rows to dividends table")
+
+#%%
+# Combine and load EARNINGS_ESTIMATES data to BigQuery
+earnings_estimates_files = glob.glob('data/EARNINGS_ESTIMATES/*_EARNINGS_ESTIMATES.csv')
+earnings_estimates_dfs = []
+
+for file in earnings_estimates_files:
+    df = pd.read_csv(file)
+    earnings_estimates_dfs.append(df)
+
+earnings_estimates_df = pd.concat(earnings_estimates_dfs, ignore_index=True)
+
+# Convert date columns
+earnings_estimates_df['date'] = pd.to_datetime(earnings_estimates_df['date'], errors='coerce')
+
+# Convert numeric columns
+numeric_columns = earnings_estimates_df.columns.difference(['date', 'horizon', 'ticker'])
+for col in numeric_columns:
+    earnings_estimates_df[col] = pd.to_numeric(earnings_estimates_df[col], errors='coerce')
+
+# Define BigQuery schema for earnings estimates
+earnings_estimates_schema = [
+    bigquery.SchemaField("date", "DATE"),
+    bigquery.SchemaField("horizon", "STRING"),
+    bigquery.SchemaField("eps_estimate_average", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_high", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_low", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_analyst_count", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_average_7_days_ago", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_average_30_days_ago", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_average_60_days_ago", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_average_90_days_ago", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_revision_up_trailing_7_days", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_revision_down_trailing_7_days", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_revision_up_trailing_30_days", "FLOAT64"),
+    bigquery.SchemaField("eps_estimate_revision_down_trailing_30_days", "FLOAT64"),
+    bigquery.SchemaField("revenue_estimate_average", "FLOAT64"),
+    bigquery.SchemaField("revenue_estimate_high", "FLOAT64"),
+    bigquery.SchemaField("revenue_estimate_low", "FLOAT64"),
+    bigquery.SchemaField("revenue_estimate_analyst_count", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    earnings_estimates_df,
+    "analyzequicker.analyzequicker.earnings_estimates",
+    job_config=bigquery.LoadJobConfig(schema=earnings_estimates_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(earnings_estimates_df)} rows to earnings_estimates table")
+
+#%%
+# Combine and load OVERVIEW data to BigQuery
+overview_files = glob.glob('data/OVERVIEW/*_OVERVIEW.csv')
+overview_dfs = []
+
+for file in overview_files:
+    df = pd.read_csv(file)
+    overview_dfs.append(df)
+
+overview_df = pd.concat(overview_dfs, ignore_index=True)
+
+# Convert date columns
+overview_df['latest_quarter'] = pd.to_datetime(overview_df['latest_quarter'], errors='coerce')
+overview_df['dividend_date'] = pd.to_datetime(overview_df['dividend_date'], errors='coerce')
+overview_df['ex_dividend_date'] = pd.to_datetime(overview_df['ex_dividend_date'], errors='coerce')
+
+# Convert numeric columns
+numeric_columns = overview_df.columns.difference(['ticker', 'asset_type', 'name', 'description', 'cik', 'exchange', 
+                                                   'currency', 'country', 'sector', 'industry', 'address', 
+                                                   'official_site', 'fiscal_year_end', 'latest_quarter', 
+                                                   'dividend_date', 'ex_dividend_date'])
+for col in numeric_columns:
+    overview_df[col] = pd.to_numeric(overview_df[col], errors='coerce')
+
+overview_df['cik'] = overview_df['cik'].astype(str)
+
+# Define BigQuery schema for overview
+overview_schema = [
+    bigquery.SchemaField("ticker", "STRING"),
+    bigquery.SchemaField("asset_type", "STRING"),
+    bigquery.SchemaField("name", "STRING"),
+    bigquery.SchemaField("description", "STRING"),
+    bigquery.SchemaField("cik", "STRING"),
+    bigquery.SchemaField("exchange", "STRING"),
+    bigquery.SchemaField("currency", "STRING"),
+    bigquery.SchemaField("country", "STRING"),
+    bigquery.SchemaField("sector", "STRING"),
+    bigquery.SchemaField("industry", "STRING"),
+    bigquery.SchemaField("address", "STRING"),
+    bigquery.SchemaField("official_site", "STRING"),
+    bigquery.SchemaField("fiscal_year_end", "STRING"),
+    bigquery.SchemaField("latest_quarter", "DATE"),
+    bigquery.SchemaField("market_capitalization", "FLOAT64"),
+    bigquery.SchemaField("ebitda", "FLOAT64"),
+    bigquery.SchemaField("peratio", "FLOAT64"),
+    bigquery.SchemaField("pegratio", "FLOAT64"),
+    bigquery.SchemaField("book_value", "FLOAT64"),
+    bigquery.SchemaField("dividend_per_share", "FLOAT64"),
+    bigquery.SchemaField("dividend_yield", "FLOAT64"),
+    bigquery.SchemaField("eps", "FLOAT64"),
+    bigquery.SchemaField("revenue_per_share_ttm", "FLOAT64"),
+    bigquery.SchemaField("profit_margin", "FLOAT64"),
+    bigquery.SchemaField("operating_margin_ttm", "FLOAT64"),
+    bigquery.SchemaField("return_on_assets_ttm", "FLOAT64"),
+    bigquery.SchemaField("return_on_equity_ttm", "FLOAT64"),
+    bigquery.SchemaField("revenue_ttm", "FLOAT64"),
+    bigquery.SchemaField("gross_profit_ttm", "FLOAT64"),
+    bigquery.SchemaField("diluted_epsttm", "FLOAT64"),
+    bigquery.SchemaField("quarterly_earnings_growth_yoy", "FLOAT64"),
+    bigquery.SchemaField("quarterly_revenue_growth_yoy", "FLOAT64"),
+    bigquery.SchemaField("analyst_target_price", "FLOAT64"),
+    bigquery.SchemaField("analyst_rating_strong_buy", "FLOAT64"),
+    bigquery.SchemaField("analyst_rating_buy", "FLOAT64"),
+    bigquery.SchemaField("analyst_rating_hold", "FLOAT64"),
+    bigquery.SchemaField("analyst_rating_sell", "FLOAT64"),
+    bigquery.SchemaField("analyst_rating_strong_sell", "FLOAT64"),
+    bigquery.SchemaField("trailing_pe", "FLOAT64"),
+    bigquery.SchemaField("forward_pe", "FLOAT64"),
+    bigquery.SchemaField("price_to_sales_ratio_ttm", "FLOAT64"),
+    bigquery.SchemaField("price_to_book_ratio", "FLOAT64"),
+    bigquery.SchemaField("evto_revenue", "FLOAT64"),
+    bigquery.SchemaField("evto_ebitda", "FLOAT64"),
+    bigquery.SchemaField("beta", "FLOAT64"),
+    bigquery.SchemaField("_52_week_high", "FLOAT64"),
+    bigquery.SchemaField("_52_week_low", "FLOAT64"),
+    bigquery.SchemaField("_50_day_moving_average", "FLOAT64"),
+    bigquery.SchemaField("_200_day_moving_average", "FLOAT64"),
+    bigquery.SchemaField("shares_outstanding", "FLOAT64"),
+    bigquery.SchemaField("shares_float", "FLOAT64"),
+    bigquery.SchemaField("percent_insiders", "FLOAT64"),
+    bigquery.SchemaField("percent_institutions", "FLOAT64"),
+    bigquery.SchemaField("dividend_date", "DATE"),
+    bigquery.SchemaField("ex_dividend_date", "DATE")
+]
+
+job = client.load_table_from_dataframe(
+    overview_df,
+    "analyzequicker.analyzequicker.overview",
+    job_config=bigquery.LoadJobConfig(schema=overview_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(overview_df)} rows to overview table")
+
+#%%
+# Combine and load INSIDER_TRANSACTIONS data to BigQuery
+insider_transactions_files = glob.glob('data/INSIDER_TRANSACTIONS/*_INSIDER_TRANSACTIONS.csv')
+insider_transactions_dfs = []
+
+for file in insider_transactions_files:
+    df = pd.read_csv(file)
+    insider_transactions_dfs.append(df)
+
+insider_transactions_df = pd.concat(insider_transactions_dfs, ignore_index=True)
+
+# Convert date columns
+insider_transactions_df['transaction_date'] = pd.to_datetime(insider_transactions_df['transaction_date'], errors='coerce')
+
+# Convert numeric columns
+insider_transactions_df['shares'] = pd.to_numeric(insider_transactions_df['shares'], errors='coerce')
+insider_transactions_df['share_price'] = pd.to_numeric(insider_transactions_df['share_price'], errors='coerce')
+
+# Define BigQuery schema for insider transactions
+insider_transactions_schema = [
+    bigquery.SchemaField("transaction_date", "DATE"),
+    bigquery.SchemaField("ticker", "STRING"),
+    bigquery.SchemaField("executive", "STRING"),
+    bigquery.SchemaField("executive_title", "STRING"),
+    bigquery.SchemaField("security_type", "STRING"),
+    bigquery.SchemaField("acquisition_or_disposal", "STRING"),
+    bigquery.SchemaField("shares", "FLOAT64"),
+    bigquery.SchemaField("share_price", "FLOAT64")
+]
+
+job = client.load_table_from_dataframe(
+    insider_transactions_df,
+    "analyzequicker.analyzequicker.insider_transactions",
+    job_config=bigquery.LoadJobConfig(schema=insider_transactions_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(insider_transactions_df)} rows to insider_transactions table")
+
+#%%
+# Combine and load SHARES_OUTSTANDING data to BigQuery
+shares_outstanding_files = glob.glob('data/SHARES_OUTSTANDING/*_SHARES_OUTSTANDING.csv')
+shares_outstanding_dfs = []
+
+for file in shares_outstanding_files:
+    df = pd.read_csv(file)
+    shares_outstanding_dfs.append(df)
+
+shares_outstanding_df = pd.concat(shares_outstanding_dfs, ignore_index=True)
+
+# Convert date columns
+shares_outstanding_df['date'] = pd.to_datetime(shares_outstanding_df['date'], errors='coerce')
+
+# Convert numeric columns
+shares_outstanding_df['shares_outstanding_diluted'] = pd.to_numeric(shares_outstanding_df['shares_outstanding_diluted'], errors='coerce')
+shares_outstanding_df['shares_outstanding_basic'] = pd.to_numeric(shares_outstanding_df['shares_outstanding_basic'], errors='coerce')
+
+# Define BigQuery schema for shares outstanding
+shares_outstanding_schema = [
+    bigquery.SchemaField("date", "DATE"),
+    bigquery.SchemaField("shares_outstanding_diluted", "FLOAT64"),
+    bigquery.SchemaField("shares_outstanding_basic", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    shares_outstanding_df,
+    "analyzequicker.analyzequicker.shares_outstanding",
+    job_config=bigquery.LoadJobConfig(schema=shares_outstanding_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(shares_outstanding_df)} rows to shares_outstanding table")
+
+#%%
+# Combine and load ETF_HOLDINGS data to BigQuery
+etf_holdings_files = glob.glob('data/ETF_PROFILE/ETF_HOLDINGS/*_ETF_HOLDINGS.csv')
+etf_holdings_dfs = []
+
+for file in etf_holdings_files:
+    df = pd.read_csv(file)
+    etf_holdings_dfs.append(df)
+
+etf_holdings_df = pd.concat(etf_holdings_dfs, ignore_index=True)
+
+# Convert numeric columns
+etf_holdings_df['weight'] = pd.to_numeric(etf_holdings_df['weight'], errors='coerce')
+
+# Define BigQuery schema for ETF holdings
+etf_holdings_schema = [
+    bigquery.SchemaField("symbol", "STRING"),
+    bigquery.SchemaField("description", "STRING"),
+    bigquery.SchemaField("weight", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    etf_holdings_df,
+    "analyzequicker.analyzequicker.etf_holdings",
+    job_config=bigquery.LoadJobConfig(schema=etf_holdings_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(etf_holdings_df)} rows to etf_holdings table")
+
+#%%
+# Combine and load ETF_INFO data to BigQuery
+etf_info_files = glob.glob('data/ETF_PROFILE/ETF_INFO/*_ETF_INFO.csv')
+etf_info_dfs = []
+
+for file in etf_info_files:
+    df = pd.read_csv(file)
+    etf_info_dfs.append(df)
+
+etf_info_df = pd.concat(etf_info_dfs, ignore_index=True)
+
+# Convert date columns
+etf_info_df['inception_date'] = pd.to_datetime(etf_info_df['inception_date'], errors='coerce')
+
+# Convert numeric columns
+numeric_columns = etf_info_df.columns.difference(['inception_date', 'leveraged', 'ticker'])
+for col in numeric_columns:
+    etf_info_df[col] = pd.to_numeric(etf_info_df[col], errors='coerce')
+
+# Define BigQuery schema for ETF info
+etf_info_schema = [
+    bigquery.SchemaField("net_assets", "FLOAT64"),
+    bigquery.SchemaField("net_expense_ratio", "FLOAT64"),
+    bigquery.SchemaField("portfolio_turnover", "FLOAT64"),
+    bigquery.SchemaField("dividend_yield", "FLOAT64"),
+    bigquery.SchemaField("inception_date", "DATE"),
+    bigquery.SchemaField("leveraged", "STRING"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    etf_info_df,
+    "analyzequicker.analyzequicker.etf_info",
+    job_config=bigquery.LoadJobConfig(schema=etf_info_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(etf_info_df)} rows to etf_info table")
+
+#%%
+# Combine and load ETF_SECTORS data to BigQuery
+etf_sectors_files = glob.glob('data/ETF_PROFILE/ETF_SECTORS/*_ETF_SECTORS.csv')
+etf_sectors_dfs = []
+
+for file in etf_sectors_files:
+    df = pd.read_csv(file)
+    etf_sectors_dfs.append(df)
+
+etf_sectors_df = pd.concat(etf_sectors_dfs, ignore_index=True)
+
+# Convert numeric columns
+etf_sectors_df['weight'] = pd.to_numeric(etf_sectors_df['weight'], errors='coerce')
+
+# Define BigQuery schema for ETF sectors
+etf_sectors_schema = [
+    bigquery.SchemaField("sector", "STRING"),
+    bigquery.SchemaField("weight", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    etf_sectors_df,
+    "analyzequicker.analyzequicker.etf_sectors",
+    job_config=bigquery.LoadJobConfig(schema=etf_sectors_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(etf_sectors_df)} rows to etf_sectors table")
+
+#%%
+# Combine and load SPLITS data to BigQuery
+splits_files = glob.glob('data/SPLITS/*_SPLITS.csv')
+splits_dfs = []
+
+for file in splits_files:
+    df = pd.read_csv(file)
+    splits_dfs.append(df)
+
+splits_df = pd.concat(splits_dfs, ignore_index=True)
+
+# Convert date columns
+splits_df['effective_date'] = pd.to_datetime(splits_df['effective_date'], errors='coerce')
+
+# Convert numeric columns
+splits_df['split_factor'] = pd.to_numeric(splits_df['split_factor'], errors='coerce')
+
+# Define BigQuery schema for splits
+splits_schema = [
+    bigquery.SchemaField("effective_date", "DATE"),
+    bigquery.SchemaField("split_factor", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    splits_df,
+    "analyzequicker.analyzequicker.splits",
+    job_config=bigquery.LoadJobConfig(schema=splits_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(splits_df)} rows to splits table")
+
+#%%
+# Combine and load COMMODITIES data to BigQuery
+commodities_files = glob.glob('data/COMMODITIES/*.csv')
+commodities_dfs = []
+
+for file in commodities_files:
+    df = pd.read_csv(file)
+    commodities_dfs.append(df)
+
+commodities_df = pd.concat(commodities_dfs, ignore_index=True)
+
+# Convert date columns
+commodities_df['timestamp'] = pd.to_datetime(commodities_df['timestamp'], errors='coerce')
+
+# Convert numeric columns
+commodities_df['value'] = pd.to_numeric(commodities_df['value'], errors='coerce')
+
+# Define BigQuery schema for commodities
+commodities_schema = [
+    bigquery.SchemaField("timestamp", "DATE"),
+    bigquery.SchemaField("value", "FLOAT64"),
+    bigquery.SchemaField("commodity", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    commodities_df,
+    "analyzequicker.analyzequicker.commodities",
+    job_config=bigquery.LoadJobConfig(schema=commodities_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(commodities_df)} rows to commodities table")
+
+#%%
+# Combine and load ECONOMIC_INDICATORS data to BigQuery
+economic_indicators_files = glob.glob('data/ECONOMIC_INDICATORS/*.csv')
+economic_indicators_dfs = []
+
+for file in economic_indicators_files:
+    df = pd.read_csv(file)
+    economic_indicators_dfs.append(df)
+
+economic_indicators_df = pd.concat(economic_indicators_dfs, ignore_index=True)
+
+# Convert date columns
+economic_indicators_df['timestamp'] = pd.to_datetime(economic_indicators_df['timestamp'], errors='coerce')
+
+# Convert numeric columns
+economic_indicators_df['value'] = pd.to_numeric(economic_indicators_df['value'], errors='coerce')
+
+# Define BigQuery schema for economic indicators
+economic_indicators_schema = [
+    bigquery.SchemaField("timestamp", "DATE"),
+    bigquery.SchemaField("value", "FLOAT64"),
+    bigquery.SchemaField("economic_indicator", "STRING")
+]
+
+job = client.load_table_from_dataframe(
+    economic_indicators_df,
+    "analyzequicker.analyzequicker.economic_indicators",
+    job_config=bigquery.LoadJobConfig(schema=economic_indicators_schema, write_disposition="WRITE_TRUNCATE")
+)
+job.result()
+print(f"Loaded {len(economic_indicators_df)} rows to economic_indicators table")
+
+#%%
