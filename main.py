@@ -72,12 +72,12 @@ def get_listing_status():
 
 def get_overview(ticker):
     try:
-        rate_limiter.wait()
         function = 'OVERVIEW'
         os.makedirs('data/{function}'.format(function=function), exist_ok=True)
         safe_ticker = sanitize_filename(ticker)
         if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
             return
+        rate_limiter.wait()
 
         url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
         r = requests.get(url)
