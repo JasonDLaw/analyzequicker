@@ -9,15 +9,21 @@ import csv
 import io
 import os
 import tqdm
+import re
 
 
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
+def sanitize_filename(filename):
+    """Replace invalid filename characters with underscores"""
+    # Windows invalid characters: < > : " / \ | ? *
+    return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
 class RateLimiter:
     def __init__(self, calls_per_minute):
         self.calls_per_minute = calls_per_minute
-        self.min_interval = 60.0 / calls_per_minute
+        self.min_interval = 76.0 / calls_per_minute
         self.last_call_time = 0.0
     
     def wait(self):
@@ -52,179 +58,265 @@ def get_listing_status():
     return tickers
 
 def get_overview(ticker):
-    rate_limiter.wait()
-    function = 'OVERVIEW'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame([data])
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df.columns = df.columns.str.replace(r'^(\d)', r'_\1', regex=True)
-    df = df.rename(columns={'symbol': 'ticker'})
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        rate_limiter.wait()
+        function = 'OVERVIEW'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        df = pd.DataFrame([data])
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df.columns = df.columns.str.replace(r'^(\d)', r'_\1', regex=True)
+        df = df.rename(columns={'symbol': 'ticker'})
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting overview for {ticker}: {e}")
 
 def get_time_series_daily_adjusted(ticker):
-    rate_limiter.wait()
-    function = 'TIME_SERIES_DAILY_ADJUSTED'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    df.columns = df.columns.str.replace(' ', '_')
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'TIME_SERIES_DAILY_ADJUSTED'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.columns = df.columns.str.replace(' ', '_')
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting time series daily adjusted for {ticker}: {e}")
+
 
 def get_insider_transactions(ticker):
-    rate_limiter.wait()
-    function = 'INSIDER_TRANSACTIONS'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.DataFrame(r.json()['data'])
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'INSIDER_TRANSACTIONS'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        df = pd.DataFrame(r.json()['data'])
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting insider transactions for {ticker}: {e}")
 
 def get_income_statement(ticker):
-    rate_limiter.wait()
-    function = 'INCOME_STATEMENT'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data['annualReports'])
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'INCOME_STATEMENT'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        df = pd.DataFrame(data['annualReports'])
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting income statement for {ticker}: {e}")
 
 def get_balance_sheet(ticker):
-    rate_limiter.wait()
-    function = 'BALANCE_SHEET'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data['annualReports'])
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'BALANCE_SHEET'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        df = pd.DataFrame(data['annualReports'])
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting balance sheet for {ticker}: {e}")
 
 def get_cash_flow(ticker):
-    rate_limiter.wait()
-    function = 'CASH_FLOW'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data['annualReports'])
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'CASH_FLOW'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        df = pd.DataFrame(data['annualReports'])
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting cash flow for {ticker}: {e}")
 
 def get_earnings(ticker):
-    rate_limiter.wait()
-    function = 'EARNINGS'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    df = pd.DataFrame(data['quarterlyEarnings'])
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'EARNINGS'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        df = pd.DataFrame(data['quarterlyEarnings'])
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting earnings for {ticker}: {e}")
 
 def get_earnings_estimates(ticker):
-    rate_limiter.wait()
-    function = 'EARNINGS_ESTIMATES'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
-    estimates_data = data.get('estimates', [])
-    df = pd.DataFrame(estimates_data)# Clean column names (convert camelCase to snake_case)
-    df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function), index=False)
+    try:
+        function = 'EARNINGS_ESTIMATES'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
+        estimates_data = data.get('estimates', [])
+        df = pd.DataFrame(estimates_data)# Clean column names (convert camelCase to snake_case)
+        df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
+        df['ticker'] = ticker
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function), index=False)
+    except Exception as e:
+        print(f"Error getting earnings estimates for {ticker}: {e}")
 
 def get_dividends(ticker):
-    rate_limiter.wait()
-    function = 'DIVIDENDS'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-    df['ticker'] = ticker
-    df.columns = df.columns.str.replace(' ', '_')
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'DIVIDENDS'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+        df['ticker'] = ticker
+        df.columns = df.columns.str.replace(' ', '_')
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting dividends for {ticker}: {e}")
 
 def get_splits(ticker):
-    rate_limiter.wait()
-    function = 'SPLITS'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-    df['ticker'] = ticker
-    df.columns = df.columns.str.replace(' ', '_')
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'SPLITS'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+        df['ticker'] = ticker
+        df.columns = df.columns.str.replace(' ', '_')
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting splits for {ticker}: {e}")
 
 def get_shares_outstanding(ticker):
-    rate_limiter.wait()
-    function = 'SHARES_OUTSTANDING'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-    df['ticker'] = ticker
-    df.columns = df.columns.str.replace(' ', '_')
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=ticker,function=function),index=False)
+    try:
+        function = 'SHARES_OUTSTANDING'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
+            return
+
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
+        df['ticker'] = ticker
+        df.columns = df.columns.str.replace(' ', '_')
+        df.replace(to_replace='None', value=0, inplace=True)
+        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting shares outstanding for {ticker}: {e}")
 
 def get_etf_profile(ticker):
-    rate_limiter.wait()
-    function = 'ETF_PROFILE'
-    url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
-    r = requests.get(url)
-    data = r.json()
+    try:
+        function = 'ETF_PROFILE'
+        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        safe_ticker = sanitize_filename(ticker)
+        
+        # Check if main ETF_INFO file exists (sectors and holdings are optional)
+        if os.path.exists('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=safe_ticker,function=function)):
+            return
 
-    os.makedirs('data/{function}'.format(function=function), exist_ok=True)
+        rate_limiter.wait()
+        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}'.format(function=function,ticker=ticker,apikey=apikey)
+        r = requests.get(url)
+        data = r.json()
 
-    info = {
-        'net_assets': [data['net_assets']],
-        'net_expense_ratio': [data['net_expense_ratio']],
-        'portfolio_turnover': [data['portfolio_turnover']],
-        'dividend_yield': [data['dividend_yield']],
-        'inception_date': [data['inception_date']],
-        'leveraged': [data['leveraged']]
-    }
+        info = {
+            'net_assets': [data['net_assets']],
+            'net_expense_ratio': [data['net_expense_ratio']],
+            'portfolio_turnover': [data['portfolio_turnover']],
+            'dividend_yield': [data['dividend_yield']],
+            'inception_date': [data['inception_date']],
+            'leveraged': [data['leveraged']]
+        }
 
-    df = pd.DataFrame(info)
-    df['ticker'] = ticker
-    df.replace(to_replace='None', value=0, inplace=True)
-    os.makedirs('data/{function}/ETF_INFO'.format(function=function), exist_ok=True)
-    df.to_csv('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=ticker,function=function),index=False)
-
-    if data.get('sectors'):
-        df = pd.DataFrame(data['sectors'])
+        df = pd.DataFrame(info)
         df['ticker'] = ticker
         df.replace(to_replace='None', value=0, inplace=True)
-        os.makedirs('data/{function}/ETF_SECTORS'.format(function=function), exist_ok=True)
-        df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=ticker,function=function),index=False)
+        os.makedirs('data/{function}/ETF_INFO'.format(function=function), exist_ok=True)
+        df.to_csv('data/{function}/ETF_INFO/{ticker}_ETF_INFO.csv'.format(ticker=safe_ticker,function=function),index=False)
 
-    if data.get('holdings'):
-        df = pd.DataFrame(data['holdings'])
-        df['ticker'] = ticker
-        df.replace(to_replace='None', value=0, inplace=True)
-        os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
-        df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
+        if data.get('sectors'):
+            df = pd.DataFrame(data['sectors'])
+            df['ticker'] = ticker
+            df.replace(to_replace='None', value=0, inplace=True)
+            os.makedirs('data/{function}/ETF_SECTORS'.format(function=function), exist_ok=True)
+            df.to_csv('data/{function}/ETF_SECTORS/{ticker}_ETF_SECTORS.csv'.format(ticker=safe_ticker,function=function),index=False)
+
+        if data.get('holdings'):
+            df = pd.DataFrame(data['holdings'])
+            df['ticker'] = ticker
+            df.replace(to_replace='None', value=0, inplace=True)
+            os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
+            df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=safe_ticker,function=function),index=False)
+    except Exception as e:
+        print(f"Error getting ETF profile for {ticker}: {e}")
 
 #%%
 tickers = get_listing_status()
@@ -232,14 +324,13 @@ stocks = tickers[tickers['asset_type'] == 'Stock']
 etfs = tickers[tickers['asset_type'] == 'ETF']
 
 # for testing
-# stocks = pd.DataFrame(['AAPL'], columns=['symbol'])
+# stocks = pd.DataFrame(['IBM'], columns=['symbol'])
 # etfs = pd.DataFrame(['SPY'], columns=['symbol'])
 
 #%%
-
 for ticker in tqdm.tqdm(stocks.symbol.unique()):
-    get_overview(ticker)
     get_time_series_daily_adjusted(ticker)
+    get_overview(ticker)
     get_insider_transactions(ticker)
     get_income_statement(ticker)
     get_balance_sheet(ticker)
@@ -249,7 +340,7 @@ for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_dividends(ticker)
     get_splits(ticker)
     get_shares_outstanding(ticker)
-    
+
 #%%
 for ticker in tqdm.tqdm(etfs.symbol.unique()):
     get_time_series_daily_adjusted(ticker)
@@ -327,6 +418,65 @@ job.result()  # Wait for the job to complete
 # Combine and load BALANCE_SHEET data to BigQuery
 import glob
 
+#%%
+time_series_files = glob.glob('data/TIME_SERIES_DAILY_ADJUSTED/*_TIME_SERIES_DAILY_ADJUSTED.csv')
+
+# Define BigQuery schema for time series
+time_series_schema = [
+    bigquery.SchemaField("timestamp", "DATE"),
+    bigquery.SchemaField("open", "FLOAT64"),
+    bigquery.SchemaField("high", "FLOAT64"),
+    bigquery.SchemaField("low", "FLOAT64"),
+    bigquery.SchemaField("close", "FLOAT64"),
+    bigquery.SchemaField("adjusted_close", "FLOAT64"),
+    bigquery.SchemaField("volume", "FLOAT64"),
+    bigquery.SchemaField("dividend_amount", "FLOAT64"),
+    bigquery.SchemaField("split_coefficient", "FLOAT64"),
+    bigquery.SchemaField("ticker", "STRING")
+]
+
+BATCH_SIZE = 1000  # Process 100 files at a time
+total_rows = 0
+
+print(f"Processing {len(time_series_files)} files in batches of {BATCH_SIZE}...")
+
+for i in range(0, len(time_series_files), BATCH_SIZE):
+    batch_files = time_series_files[i:i + BATCH_SIZE]
+    time_series_dfs = []
+    
+    for file in batch_files:
+        df = pd.read_csv(file)
+        time_series_dfs.append(df)
+    
+    time_series_df = pd.concat(time_series_dfs, ignore_index=True)
+    
+    # Convert date columns
+    time_series_df['timestamp'] = pd.to_datetime(time_series_df['timestamp'], errors='coerce')
+    
+    # Convert numeric columns
+    numeric_columns = ['open', 'high', 'low', 'close', 'adjusted_close', 'volume', 'dividend_amount', 'split_coefficient']
+    for col in numeric_columns:
+        time_series_df[col] = pd.to_numeric(time_series_df[col], errors='coerce')
+    
+    # Use WRITE_TRUNCATE for first batch, WRITE_APPEND for subsequent batches
+    write_disposition = "WRITE_TRUNCATE" if i == 0 else "WRITE_APPEND"
+    
+    job = client.load_table_from_dataframe(
+        time_series_df,
+        "analyzequicker.analyzequicker.time_series_daily_adjusted",
+        job_config=bigquery.LoadJobConfig(schema=time_series_schema, write_disposition=write_disposition)
+    )
+    job.result()  # Wait for the job to complete
+    
+    total_rows += len(time_series_df)
+    print(f"Batch {i//BATCH_SIZE + 1}: Loaded {len(time_series_df)} rows (Total: {total_rows})")
+    
+    # Clear memory
+    del time_series_dfs, time_series_df
+
+print(f"✅ Loaded {total_rows} total rows to time_series_daily_adjusted table")
+
+#%%
 balance_sheet_files = glob.glob('data/BALANCE_SHEET/*_BALANCE_SHEET.csv')
 balance_sheet_dfs = []
 
