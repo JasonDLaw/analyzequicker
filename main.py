@@ -10,8 +10,21 @@ import io
 import os
 import tqdm
 import re
+import logging
+from datetime import datetime
 
+# Set up logging to file
+os.makedirs('logs', exist_ok=True)
+log_filename = f'logs/errors_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename)
+    ]
+)
 
+#%%
 credentials = service_account.Credentials.from_service_account_file(config.service_account_path)
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
@@ -75,7 +88,7 @@ def get_overview(ticker):
         df = df.rename(columns={'symbol': 'ticker'})
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting overview for {ticker}: {e}")
+        logging.error(f"Error getting overview for {ticker}: {e}", exc_info=True)
 
 def get_time_series_daily_adjusted(ticker):
     try:
@@ -94,7 +107,7 @@ def get_time_series_daily_adjusted(ticker):
         df.columns = df.columns.str.replace(' ', '_')
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting time series daily adjusted for {ticker}: {e}")
+        logging.error(f"Error getting time series daily adjusted for {ticker}: {e}", exc_info=True)
 
 
 def get_insider_transactions(ticker):
@@ -112,7 +125,7 @@ def get_insider_transactions(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting insider transactions for {ticker}: {e}")
+        logging.error(f"Error getting insider transactions for {ticker}: {e}", exc_info=True)
 
 def get_income_statement(ticker):
     try:
@@ -132,7 +145,7 @@ def get_income_statement(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting income statement for {ticker}: {e}")
+        logging.error(f"Error getting income statement for {ticker}: {e}", exc_info=True)
 
 def get_balance_sheet(ticker):
     try:
@@ -152,7 +165,7 @@ def get_balance_sheet(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting balance sheet for {ticker}: {e}")
+        logging.error(f"Error getting balance sheet for {ticker}: {e}", exc_info=True)
 
 def get_cash_flow(ticker):
     try:
@@ -172,7 +185,7 @@ def get_cash_flow(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting cash flow for {ticker}: {e}")
+        logging.error(f"Error getting cash flow for {ticker}: {e}", exc_info=True)
 
 def get_earnings(ticker):
     try:
@@ -192,7 +205,7 @@ def get_earnings(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting earnings for {ticker}: {e}")
+        logging.error(f"Error getting earnings for {ticker}: {e}", exc_info=True)
 
 def get_earnings_estimates(ticker):
     try:
@@ -213,7 +226,7 @@ def get_earnings_estimates(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function), index=False)
     except Exception as e:
-        print(f"Error getting earnings estimates for {ticker}: {e}")
+        logging.error(f"Error getting earnings estimates for {ticker}: {e}", exc_info=True)
 
 def get_dividends(ticker):
     try:
@@ -232,7 +245,7 @@ def get_dividends(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting dividends for {ticker}: {e}")
+        logging.error(f"Error getting dividends for {ticker}: {e}", exc_info=True)
 
 def get_splits(ticker):
     try:
@@ -251,7 +264,7 @@ def get_splits(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting splits for {ticker}: {e}")
+        logging.error(f"Error getting splits for {ticker}: {e}", exc_info=True)
 
 def get_shares_outstanding(ticker):
     try:
@@ -270,7 +283,7 @@ def get_shares_outstanding(ticker):
         df.replace(to_replace='None', value=0, inplace=True)
         df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting shares outstanding for {ticker}: {e}")
+        logging.error(f"Error getting shares outstanding for {ticker}: {e}", exc_info=True)
 
 def get_etf_profile(ticker):
     try:
@@ -316,7 +329,7 @@ def get_etf_profile(ticker):
             os.makedirs('data/{function}/ETF_HOLDINGS'.format(function=function), exist_ok=True)
             df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=safe_ticker,function=function),index=False)
     except Exception as e:
-        print(f"Error getting ETF profile for {ticker}: {e}")
+        logging.error(f"Error getting ETF profile for {ticker}: {e}", exc_info=True)
 
 #%%
 tickers = get_listing_status()
