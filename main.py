@@ -227,14 +227,14 @@ def get_etf_profile(ticker):
         df.to_csv('data/{function}/ETF_HOLDINGS/{ticker}_ETF_HOLDINGS.csv'.format(ticker=ticker,function=function),index=False)
 
 #%%
-# tickers = get_listing_status()
-# stocks = tickers[tickers['asset_type'] == 'Stock']
-# etfs = tickers[tickers['asset_type'] == 'ETF']
+tickers = get_listing_status()
+stocks = tickers[tickers['asset_type'] == 'Stock']
+etfs = tickers[tickers['asset_type'] == 'ETF']
 
 # for testing
-tickers  = pd.read_csv('data/LISTING_STATUS.csv')
-stocks = tickers[tickers['asset_type'] == 'Stock'][0:1]
-etfs = tickers[tickers['asset_type'] == 'ETF'][0:1]
+# stocks = pd.DataFrame(['AAPL'], columns=['symbol'])
+# etfs = pd.DataFrame(['SPY'], columns=['symbol'])
+
 #%%
 
 for ticker in tqdm.tqdm(stocks.symbol.unique()):
