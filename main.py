@@ -344,6 +344,8 @@ etfs = tickers[tickers['asset_type'] == 'ETF']
 for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_time_series_daily_adjusted(ticker)
     get_overview(ticker)
+#%%
+for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_insider_transactions(ticker)
     get_income_statement(ticker)
     get_balance_sheet(ticker)
@@ -353,7 +355,6 @@ for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_dividends(ticker)
     get_splits(ticker)
     get_shares_outstanding(ticker)
-
 #%%
 for ticker in tqdm.tqdm(etfs.symbol.unique()):
     get_time_series_daily_adjusted(ticker)
