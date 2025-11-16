@@ -429,10 +429,10 @@ job = client.load_table_from_dataframe(
 job.result()  # Wait for the job to complete
 
 #%%
-# Combine and load BALANCE_SHEET data to BigQuery
 import glob
 
 #%%
+# Combine and load TIME_SERIES_DAILY_ADJUSTED data to BigQuery
 time_series_files = glob.glob('data/TIME_SERIES_DAILY_ADJUSTED/*_TIME_SERIES_DAILY_ADJUSTED.csv')
 
 # Define BigQuery schema for time series
@@ -491,6 +491,7 @@ for i in range(0, len(time_series_files), BATCH_SIZE):
 print(f"✅ Loaded {total_rows} total rows to time_series_daily_adjusted table")
 
 #%%
+# Combine and load BALANCE_SHEET data to BigQuery
 balance_sheet_files = glob.glob('data/BALANCE_SHEET/*_BALANCE_SHEET.csv')
 balance_sheet_dfs = []
 
@@ -560,7 +561,6 @@ job.result()  # Wait for the job to complete
 print(f"Loaded {len(balance_sheet_df)} rows to balance_sheet table")
 
 #%%
-# Combine and load CASH_FLOW data to BigQuery
 cash_flow_files = glob.glob('data/CASH_FLOW/*_CASH_FLOW.csv')
 cash_flow_dfs = []
 
