@@ -228,63 +228,6 @@ def get_earnings_estimates(ticker):
     except Exception as e:
         logging.error(f"Error getting earnings estimates for {ticker}: {e}", exc_info=True)
 
-def get_dividends(ticker):
-    try:
-        function = 'DIVIDENDS'
-        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-        safe_ticker = sanitize_filename(ticker)
-        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
-            return
-
-        rate_limiter.wait()
-        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-        r = requests.get(url)
-        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-        df['ticker'] = ticker
-        df.columns = df.columns.str.replace(' ', '_')
-        df.replace(to_replace='None', value=0, inplace=True)
-        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
-    except Exception as e:
-        logging.error(f"Error getting dividends for {ticker}: {e}", exc_info=True)
-
-def get_splits(ticker):
-    try:
-        function = 'SPLITS'
-        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-        safe_ticker = sanitize_filename(ticker)
-        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
-            return
-
-        rate_limiter.wait()
-        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-        r = requests.get(url)
-        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-        df['ticker'] = ticker
-        df.columns = df.columns.str.replace(' ', '_')
-        df.replace(to_replace='None', value=0, inplace=True)
-        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
-    except Exception as e:
-        logging.error(f"Error getting splits for {ticker}: {e}", exc_info=True)
-
-def get_shares_outstanding(ticker):
-    try:
-        function = 'SHARES_OUTSTANDING'
-        os.makedirs('data/{function}'.format(function=function), exist_ok=True)
-        safe_ticker = sanitize_filename(ticker)
-        if os.path.exists('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function)):
-            return
-
-        rate_limiter.wait()
-        url = 'https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={apikey}&datatype=csv'.format(function=function,ticker=ticker,apikey=apikey)
-        r = requests.get(url)
-        df = pd.read_csv(io.StringIO(r.content.decode('utf-8')))
-        df['ticker'] = ticker
-        df.columns = df.columns.str.replace(' ', '_')
-        df.replace(to_replace='None', value=0, inplace=True)
-        df.to_csv('data/{function}/{ticker}_{function}.csv'.format(ticker=safe_ticker,function=function),index=False)
-    except Exception as e:
-        logging.error(f"Error getting shares outstanding for {ticker}: {e}", exc_info=True)
-
 def get_etf_profile(ticker):
     try:
         function = 'ETF_PROFILE'
@@ -335,7 +278,8 @@ def get_etf_profile(ticker):
 tickers = get_listing_status()
 stocks = tickers[tickers['asset_type'] == 'Stock']
 etfs = tickers[tickers['asset_type'] == 'ETF']
-
+# get_overview('AKUS')
+pd.read_csv('data/OVERVIEW/AKUS_OVERVIEW.csv')
 # for testing
 # stocks = pd.DataFrame(['IBM'], columns=['symbol'])
 # etfs = pd.DataFrame(['SPY'], columns=['symbol'])
@@ -352,13 +296,9 @@ for ticker in tqdm.tqdm(stocks.symbol.unique()):
     get_cash_flow(ticker)
     get_earnings(ticker)
     get_earnings_estimates(ticker)
-    get_dividends(ticker)
-    get_splits(ticker)
-    get_shares_outstanding(ticker)
 #%%
 for ticker in tqdm.tqdm(etfs.symbol.unique()):
     get_time_series_daily_adjusted(ticker)
-    get_dividends(ticker)
     get_etf_profile(ticker)
 
 #%%
