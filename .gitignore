@@ -212,3 +212,4 @@ __marimo__/
 data/
 config.py
 dev.py
+logs/*

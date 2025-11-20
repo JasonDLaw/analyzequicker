@@ -2,7 +2,7 @@
 class RateLimiter:
     def __init__(self, calls_per_minute):
         self.calls_per_minute = calls_per_minute
-        self.min_interval = 76.0 / calls_per_minute
+        self.min_interval = 60.0 / calls_per_minute
         self.last_call_time = 0.0
     
     def wait(self):
@@ -36,13 +36,13 @@ def call_alpha_vantage(symbol, function_params):
     rate_limiter.wait()
     r = requests.get(url, params=params)
     if r.status_code != 200:
-        print('Request failed')
+        logging.error('Request failed')
 
     if datatype == 'csv':
         data = r.content.decode('utf-8')
         actual_columns = data.splitlines()[0].split(',')
         if len(actual_columns) <= 1:
-            print(f'Data is not in the expected format - {symbol} - {function}'.format(symbol, function))
+            logging.error(f'Data is not in the expected format - {symbol} - {function}')
         df = pd.read_csv(io.StringIO(data))
     else:
         data = r.json()
@@ -59,7 +59,6 @@ def call_alpha_vantage(symbol, function_params):
             # overview
             df = pd.DataFrame([data])
         else:
-            print(f'Data is not in the expected format - {symbol} - {function}'.format(symbol, function))
             raise Exception(f'Data is not in the expected format - {symbol} - {function}'.format(symbol, function))
 
     df.columns = df.columns.str.replace(r'([a-z0-9])([A-Z])', r'\1_\2', regex=True).str.lower()
@@ -80,6 +79,12 @@ import csv
 import os
 import io
 import re
+import logging
+from datetime import datetime
+
+os.makedirs('logs', exist_ok=True)
+log_time = datetime.now().strftime('%Y-%m-%d %H.%M.%S')
+logging.basicConfig(filename=f'logs/{log_time} main2.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 rate_limiter = RateLimiter(calls_per_minute=76)
 rate_limiter.wait()
@@ -102,7 +107,6 @@ for symbol in tqdm.tqdm(stock_symbols):
         call_alpha_vantage(symbol, {'function': 'OVERVIEW'})
         call_alpha_vantage(symbol, {'function': 'TIME_SERIES_DAILY_ADJUSTED', 'datatype': 'csv'})
     except Exception as e:
-        print(f'Error for {symbol}: {e}'.format(symbol, e))
+        logging.error(f'Error for {symbol}: {e}')
 
-# %%
-stock_symbols
+#%%
